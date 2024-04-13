@@ -254,11 +254,13 @@ function init(app, done) {
     app.addHook('sender:delivered', async (delivery, info) => {
         await AddMailEvent(client, delivery, info, "delivered");
     });
-    app.addHook('sender:tlserror', async (delivery, info) => {
-        await AddMailEvent(client, delivery, info, "tlserror");
+    app.addHook('sender:tlserror', async (delivery, info, err) => {
+        console.log(err)
+        await AddMailEvent(client, delivery, info, "tlserror", null, err);
     });
-    app.addHook('sender:responseError', async (delivery, info) => {
-        await AddMailEvent(client, delivery, info, "faileddelivery");
+    app.addHook('sender:responseError', async (delivery, info, err) => {        
+        console.log(err)
+        await AddMailEvent(client, delivery, info, "faileddelivery", null, err);
     });
     app.addHook('queue:route', async (envelope, routing) => {
         app.logger.info('ai-spam-check', `id=${envelope.sessionId} interface=${envelope.interface} deliveryZone=${routing.deliveryZone} ${envelope.from?.toLowerCase()} -> ${envelope.to}`);
@@ -943,7 +945,7 @@ async function LookupConfigDomains(client, domain, email) {
  * @param {string} action
  * @param {object} report
  */
-async function AddMailEvent(client, envelope, info, action, report) {
+async function AddMailEvent(client, envelope, info, action, report, err) {
     if (envelope.interface == "bounce") return;
     let id = envelope.id;
     if (id == null && info != null) {
@@ -1018,25 +1020,40 @@ async function AddMailEvent(client, envelope, info, action, report) {
     } else if (to != null && Array.isArray(to) && to.length == 1) {
         todomain = to[0].split('@')[1];
     }
-    try {
-        if (report == null) {
-            await client.InsertOne({
-                collectionname: "mailevents", item: {
-                    _acl, configs: _configs, from, to, id, messageid: envelope.messageId, "_type": action, domain, todomain, action,
-                    name: action + " " + domain
-                }
-            });
-        } else {
-            if (typeof report == "string") {
-                report = { reason: report };
+    let error = undefined;
+    if(err != null) {
+        try {
+            if (typeof err == "string") {
+                error = {"message": err.message}
+            } else {
+                error = JSON.parse(JSON.stringify(err))
             }
-            await client.InsertOne({
-                collectionname: "mailevents", item: {
-                    _acl, configs: _configs, from, to, id, messageid: envelope.messageId, "_type": action, domain, todomain, action,
-                    name: action + " " + domain, ...report
+        } catch (error) {
+            try {
+                if(err.message != null) {
+                    error = {"message": err.message}
                 }
-            });
+            } catch (error) {
+                
+            }            
         }
+    }
+    try {
+        var item = {
+            _acl, configs: _configs, from, to, id, messageid: envelope.messageId, "_type": action, domain, todomain, action, error,
+            name: action + " " + domain
+        };
+        if (report != null) {
+            if (typeof report == "string") {
+                item.reason = report;
+            } else {
+                item = { ...item, ...report }
+            }
+        }
+        if(error != null) {
+            item.reason = error.message;
+        }
+        await client.InsertOne({ collectionname: "mailevents", item});
     } catch (error) {
         app.logger.error('ai-spam-check', 'AddMailEvent: %s', error.message);
     }

@@ -1,6 +1,6 @@
 {
     "name": "zone-mta-ai-spam-check",
-    "version": "0.0.7",
+    "version": "0.0.10",
     "description": "Use OpenAI to scan new, or all email based on custom LLM prompts, per user or per domain, before delivering the email to your real mail servers.",
     "main": "app.js",
     "openiap": {
