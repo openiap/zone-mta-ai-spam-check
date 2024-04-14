@@ -413,7 +413,7 @@ function init(app, done) {
                 let err = new Error(`Relaying for ${address.address} denied.`);
                 err.responseCode = 550;
                 app.logger.info('ai-spam-check', `id=${envelope.sessionId} ${err.responseCode} ${err.message}`);
-                await AddMailEvent(client, envelope.envelope, session, "relaydenied");
+                await AddMailEvent(client, envelope.envelope, session, "relaydenied", null, null, address.address);
                 return reject(err);
             }
             resolve()
@@ -946,7 +946,7 @@ async function LookupConfigDomains(client, domain, email) {
  * @param {string} action
  * @param {object} report
  */
-async function AddMailEvent(client, envelope, info, action, report, err) {
+async function AddMailEvent(client, envelope, info, action, report, err, address) {
     if (envelope.interface == "bounce") return;
     let id = envelope.id;
     if (id == null && info != null) {
@@ -981,6 +981,7 @@ async function AddMailEvent(client, envelope, info, action, report, err) {
         if (envelope.parsedEnvelope != null && envelope.parsedEnvelope.to != null) {
             to = envelope.parsedEnvelope.to;
         } else {
+            to = address;
             var b = true;
         }
     }
