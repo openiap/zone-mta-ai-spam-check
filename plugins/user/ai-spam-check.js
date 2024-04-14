@@ -815,7 +815,8 @@ function init(app, done) {
                     if (domaintype == null && prompt.prompt != null && prompt.prompt != "") {
                         if (auto_trust_firsttime_notspam == true || prompt.auto_trust_firsttime_notspam == true) {
                             try {
-                                await client.InsertOrUpdateOne({ collectionname: "maildomains", uniqeness: "name,domain,email", item: { _acl: prompt._acl, "report": result, domain: promptdomains, email: promptemails, name: domain, _type: "approved", config: prompt._id, messageid: envelope.messageId } });
+                                // await client.InsertOrUpdateOne({ collectionname: "maildomains", uniqeness: "name,domain,email", item: { _acl: prompt._acl, "report": result, domain: promptdomains, email: promptemails, name: domain, _type: "approved", config: prompt._id, messageid: envelope.messageId } });
+                                await client.InsertOrUpdateOne({ collectionname: "maildomains", uniqeness: "domain,config", item: { _acl: prompt._acl, ...result, domain: domain, email: from.toLowerCase(), name: domain + " for " + prompt.name, _type: "approved", messageid: envelope.messageId, config: prompt._id } });
                             } catch (error) {
                                 throw error;
                             }
